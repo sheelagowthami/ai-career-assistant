@@ -2,17 +2,17 @@ import streamlit as st
 import pandas as pd
 import PyPDF2
 from collections import Counter
+import re
 
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
 st.set_page_config(page_title="AI Career Assistant", page_icon="🤖")
-
 st.title("🤖 AI Career Assistant")
-st.write("Upload your resume and get career insights 🚀")
+st.write("Upload your resume and get smart career insights 🚀")
 
 # -----------------------------
-# LOAD DATASET
+# LOAD DATA
 # -----------------------------
 @st.cache_data
 def load_data():
@@ -21,7 +21,15 @@ def load_data():
 data = load_data()
 
 # -----------------------------
-# PDF TEXT EXTRACTION
+# CLEAN TEXT
+# -----------------------------
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
+    return text
+
+# -----------------------------
+# EXTRACT TEXT FROM PDF
 # -----------------------------
 def extract_text(file):
     text = ""
@@ -30,37 +38,40 @@ def extract_text(file):
         for page in reader.pages:
             text += page.extract_text()
     except:
-        st.error("Error reading PDF file")
-    return text.lower()
+        st.error("Error reading PDF")
+    return clean_text(text)
 
 # -----------------------------
-# SKILL EXTRACTION
+# EXTRACT SKILLS (IMPROVED)
 # -----------------------------
 def extract_skills(text):
     found_skills = []
+
     for skill in data['skill']:
         if skill.lower() in text:
-            found_skills.append(skill)
+            found_skills.append(skill.lower())
+
     return list(set(found_skills))
 
 # -----------------------------
-# ROLE PREDICTION
+# ROLE SCORING (MAIN FIX 🔥)
 # -----------------------------
 def predict_role(skills):
-    roles = []
+    role_scores = {}
 
     for skill in skills:
-        role = data[data['skill'] == skill]['role'].values
-        if len(role) > 0:
-            roles.append(role[0])
+        roles = data[data['skill'] == skill]['role'].values
+        for role in roles:
+            role_scores[role] = role_scores.get(role, 0) + 1
 
-    if roles:
-        return Counter(roles).most_common(1)[0][0]
+    if role_scores:
+        best_role = max(role_scores, key=role_scores.get)
+        return best_role, role_scores
     else:
-        return "Software Developer"
+        return "Software Developer", {}
 
 # -----------------------------
-# SKILL RECOMMENDATION
+# RECOMMEND SKILLS
 # -----------------------------
 def recommend_skills(role, user_skills):
     role_skills = data[data['role'] == role]['skill'].tolist()
@@ -68,12 +79,13 @@ def recommend_skills(role, user_skills):
     return missing
 
 # -----------------------------
-# RESUME SCORE (BONUS FEATURE)
+# SCORE CALCULATION
 # -----------------------------
 def calculate_score(user_skills, role):
     role_skills = data[data['role'] == role]['skill'].tolist()
     if len(role_skills) == 0:
         return 50
+
     score = (len(user_skills) / len(role_skills)) * 100
     return min(int(score), 100)
 
@@ -82,72 +94,41 @@ def calculate_score(user_skills, role):
 # -----------------------------
 file = st.file_uploader("📄 Upload Resume (PDF)", type="pdf")
 
-if file is not None:
+if file:
     st.success("Resume uploaded successfully ✅")
 
-    # Extract text
     text = extract_text(file)
-
-    # Extract skills
     skills = extract_skills(text)
 
-    # Predict role
-    role = predict_role(skills)
-
-    # Recommend skills
-    missing_skills = recommend_skills(role, skills)
-
-    # Score
+    role, role_scores = predict_role(skills)
+    missing = recommend_skills(role, skills)
     score = calculate_score(skills, role)
 
     # -----------------------------
-    # OUTPUT SECTION
+    # OUTPUT
     # -----------------------------
     st.subheader("🧠 Detected Skills")
     if skills:
         st.write(", ".join(skills))
     else:
-        st.warning("No skills detected. Try a better resume.")
+        st.warning("No skills detected")
 
-    st.subheader("💼 Suggested Career Role")
+    st.subheader("📊 Role Matching Scores")
+    if role_scores:
+        st.write(role_scores)
+
+    st.subheader("💼 Suggested Role")
     st.success(role)
 
-    st.subheader("📊 Resume Score")
+    st.subheader("📈 Resume Score")
     st.progress(score)
-    st.write(f"Score: {score}/100")
+    st.write(f"{score}/100")
 
-    st.subheader("📈 Skills to Improve")
-    if missing_skills:
-        st.write(", ".join(missing_skills))
+    st.subheader("📚 Skills to Improve")
+    if missing:
+        st.write(", ".join(missing))
     else:
-        st.success("Great! You already match this role well 🎯")
-
-    st.subheader("🗺️ Learning Roadmap")
-    if role == "AI Engineer":
-        st.write("""
-        • Learn Python deeply  
-        • Study Machine Learning (Scikit-learn)  
-        • Learn Deep Learning (TensorFlow/PyTorch)  
-        • Build ML Projects  
-        """)
-    elif role == "Frontend Developer":
-        st.write("""
-        • Master HTML, CSS, JavaScript  
-        • Learn React  
-        • Build responsive websites  
-        """)
-    elif role == "Backend Developer":
-        st.write("""
-        • Learn Java/Python  
-        • Study APIs & Databases  
-        • Build backend projects  
-        """)
-    else:
-        st.write("""
-        • Learn Programming (Python/Java)  
-        • Practice DSA  
-        • Build projects  
-        """)
+        st.success("You match this role well 🎯")
 
 # -----------------------------
 # FOOTER
