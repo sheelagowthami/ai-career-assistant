@@ -2,12 +2,22 @@ skill,role
 python,AI Engineer
 machine learning,AI Engineer
 deep learning,AI Engineer
-pandas,AI Engineer
-numpy,AI Engineer
+nlp,AI Engineer
+tensorflow,AI Engineer
+pytorch,AI Engineer
+pandas,Data Analyst
+numpy,Data Analyst
+excel,Data Analyst
+power bi,Data Analyst
+sql,Data Analyst
 html,Frontend Developer
 css,Frontend Developer
 javascript,Frontend Developer
 react,Frontend Developer
+node,Backend Developer
+django,Backend Developer
+flask,Backend Developer
 java,Backend Developer
-sql,Backend Developer
 spring,Backend Developer
+c++,Software Developer
+git,Software Developer
